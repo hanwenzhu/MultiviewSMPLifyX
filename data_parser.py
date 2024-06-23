@@ -130,7 +130,7 @@ class OpenPose(Dataset):
 
     def __init__(self, data_folder, img_folder='color',
                  keyp_folder='keypoints',
-                 cam_subpath='meta/cam_data.mat',
+                 metadata_folder='metadata',
                  use_hands=False,
                  use_face=False,
                  dtype=torch.float32,
@@ -155,7 +155,7 @@ class OpenPose(Dataset):
 
         self.img_folder = osp.join(data_folder, img_folder)
         self.keyp_folder = osp.join(data_folder, keyp_folder)
-        self.cam_fpath = osp.join(data_folder, cam_subpath)
+        self.metadata_folder = osp.join(data_folder, metadata_folder)
 
         self.img_paths = [osp.join(self.img_folder, img_fn)
                           for img_fn in os.listdir(self.img_folder)
@@ -201,8 +201,7 @@ class OpenPose(Dataset):
     def read_item(self, img_path):
         # read images
         img = cv2.imread(img_path).astype(np.float32)[:, :, :] / 255.0
-        img_fn = osp.split(img_path)[1]
-        img_fn, _ = osp.splitext(osp.split(img_path)[1])
+        img_fn, _ = osp.splitext(osp.basename(img_path))
 
         # read key points
         keypoint_fn = osp.join(self.keyp_folder,
@@ -227,22 +226,29 @@ class OpenPose(Dataset):
                 output_dict['gender_pd'] = keyp_tuple.gender_pd
         
         # read camera
-        cam_id = int(img_fn)
-        cam_data = sio.loadmat(self.cam_fpath)['cam'][0]
-        cam_param = cam_data[cam_id]
+        camera_fn = osp.join(self.metadata_folder,
+                             img_fn + '.npz')
+        cam_data = np.load(camera_fn)
+        cam_id = cam_data['index'].item()
+        camera_position = cam_data['camera_positions'][0]
+        # direction is normalized negative camera position
+        direction = -camera_position / (camera_position ** 2).sum() ** .5
+        # fixed Z-up
+        up = np.array([0, 0, 1], dtype=camera_position.dtype)
+        # right = direction X up
+        right = np.cross(direction, up)
         cam_R, cam_t = generate_cam_Rt(
-            center=cam_param['center'][0, 0], right=cam_param['right'][0, 0],
-            up=cam_param['up'][0, 0], direction=cam_param['direction'][0, 0])
+            center=camera_position, right=right,
+            up=up, direction=direction)
         cam_R = cam_R.astype(np.float32)
         cam_t = cam_t.astype(np.float32)
-        # cam_r = np.float32(cam_data['cam_rs'][cam_id])
-        # cam_t = np.float32(cam_data['cam_ts'][cam_id])
-        # cam_R = cv2.Rodrigues(cam_r)[0]
+        fovy = 70.0 * np.pi / 180
+        focal_length = 0.5 * float(cam_data['height'].item()) / np.tan(0.5 * fovy)
         output_dict['cam_id'] = cam_id
         output_dict['cam_R'] = np.float32(cam_R)
         output_dict['cam_t'] = np.float32(cam_t)
-        output_dict['cam_fx'] = 5000.0
-        output_dict['cam_fy'] = 5000.0
+        output_dict['cam_fx'] = focal_length
+        output_dict['cam_fy'] = focal_length
         output_dict['cam_cx'] = img.shape[1] / 2
         output_dict['cam_cy'] = img.shape[0] / 2
 

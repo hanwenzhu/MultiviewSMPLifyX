@@ -130,7 +130,7 @@ class OpenPose(Dataset):
 
     def __init__(self, data_folder, img_folder='color',
                  keyp_folder='keypoints',
-                 metadata_folder='metadata',
+                 metadata_folder='meta',
                  use_hands=False,
                  use_face=False,
                  dtype=torch.float32,

@@ -231,15 +231,17 @@ class OpenPose(Dataset):
         cam_data = np.load(camera_fn)
         cam_id = cam_data['index'].item()
         camera_position = cam_data['camera_positions'][0]
-        # direction is normalized negative camera position
-        direction = -camera_position / (camera_position ** 2).sum() ** .5
+        # forward is normalized negative camera position
+        forward = -camera_position / np.linalg.norm(camera_position) ** .5
         # fixed Z-up
         up = np.array([0, 0, 1], dtype=camera_position.dtype)
-        # right = direction X up
-        right = np.cross(direction, up)
+        # right = forward X up
+        right = np.cross(forward, up)
+        # up relative to camera
+        new_up = np.cross(right, forward)
         cam_R, cam_t = generate_cam_Rt(
             center=camera_position, right=right,
-            up=up, direction=direction)
+            up=new_up, direction=forward)
         cam_R = cam_R.astype(np.float32)
         cam_t = cam_t.astype(np.float32)
         fovy = 70.0 * np.pi / 180

@@ -240,7 +240,8 @@ def fit_single_frame(img_list,
             opt_weights_dict['expr_prior_weight'] = expr_weights
             opt_weights_dict['jaw_prior_weight'] = jaw_pose_prior_weights
             for i in range(len(opt_weights_dict['expr_prior_weight'])):
-                opt_weights_dict['expr_prior_weight'][i] *= (view_num / fct)
+                for j in range(len(opt_weights_dict['expr_prior_weight'][i])):
+                    opt_weights_dict['expr_prior_weight'][i][j] *= (view_num / fct)
             for i in range(len(opt_weights_dict['jaw_prior_weight'])):
                 opt_weights_dict['jaw_prior_weight'][i] *= (view_num / fct)
 

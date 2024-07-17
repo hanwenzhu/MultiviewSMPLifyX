@@ -244,7 +244,7 @@ class OpenPose(Dataset):
             up=new_up, direction=forward)
         cam_R = cam_R.astype(np.float32)
         cam_t = cam_t.astype(np.float32)
-        fovy = 40. * np.pi / 180.
+        fovy = 40. * np.pi / 180.  # TODO
         focal_length = .5 * float(cam_data['height'].item()) / np.tan(.5 * fovy)
         output_dict['cam_id'] = cam_id
         output_dict['cam_R'] = np.float32(cam_R)

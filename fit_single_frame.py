@@ -446,13 +446,13 @@ def fit_single_frame(img_list,
                 result['body_pose'] = body_pose.detach().cpu().numpy()
                 result['body_pose_embedding'] = pose_embedding.detach().cpu().numpy()
 
-            if result['body_pose'].shape[-1] == 69:
+            if result['body_pose'].shape[-1] == body_model.NUM_BODY_JOINTS * 3:
                 body_pose = result['body_pose']
-                body_pose = np.reshape(body_pose, (1, 69))
+                body_pose = np.reshape(body_pose, (1, -1))
                 body_pose = np.concatenate([result['global_orient'], body_pose], axis=1)
                 result.update({'body_pose': body_pose})
 
-            assert result['body_pose'].shape[-1] == 72
+            assert result['body_pose'].shape[-1] == 3 + body_model.NUM_BODY_JOINTS * 3
             results.append({'loss': final_loss_val,
                             'result': result})
             print('body_scale = %f' % body_scale.detach().cpu().numpy().squeeze())

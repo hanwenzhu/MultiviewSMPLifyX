@@ -77,6 +77,9 @@ def fit_single_frame(img_list,
                      depth_loss_weight=1e2,
                      interpenetration=True,
                      coll_loss_weights=None,
+                     scene_mesh_fn=None,
+                     sdf_penetration=False,
+                     sdf_penetration_weights=None,
                      df_cone_height=0.5,
                      penalize_outside=True,
                      max_collisions=8,
@@ -196,6 +199,37 @@ def fit_single_frame(img_list,
                                      dtype=dtype)
     else:
         body_mean_pose = body_pose_prior.get_mean().detach().cpu()
+    
+    # compute signed distance field
+    sdf = None
+    # sdf_normals = None
+    grid_min = None
+    grid_max = None
+    voxel_size = None
+    if sdf_penetration:
+        # TODO hard-coded constants
+        grid_min = -2.0
+        grid_max = 2.0
+        grid_dim = 512
+        voxel_size = (grid_max - grid_min) / grid_dim
+        import trimesh
+        from pysdf import SDF
+        scene_mesh = trimesh.load(scene_mesh_fn)
+        test_points = np.stack(np.meshgrid(
+            np.linspace(grid_min, grid_max, grid_dim),
+            np.linspace(grid_min, grid_max, grid_dim),
+            np.linspace(grid_min, grid_max, grid_dim),
+            indexing="ij"
+        ), axis=-1)
+        sdf_fun = SDF(scene_mesh.vertices, scene_mesh.faces)
+        sdf = sdf_fun(test_points.reshape(-1, 3)).reshape(grid_dim, grid_dim, grid_dim)
+        sdf = torch.tensor(sdf, dtype=dtype, device=device)
+        # if osp.exists(osp.join(sdf_dir, scene_name + '_normals.npy')):
+        #     sdf_normals = np.load(osp.join(sdf_dir, scene_name + '_normals.npy')).reshape(grid_dim, grid_dim, grid_dim, 3)
+        #     sdf_normals = torch.tensor(sdf_normals, dtype=dtype, device=device)
+        # else:
+        #     print("Normals not found...")
+        del scene_mesh, test_points, sdf_fun
 
     view_num = len(camera_list)
     loss_list = list()
@@ -255,6 +289,11 @@ def fit_single_frame(img_list,
             opt_weights_dict['coll_loss_weight'] = coll_loss_weights
             for i in range(len(opt_weights_dict['coll_loss_weight'])):
                 opt_weights_dict['coll_loss_weight'][i] *= (view_num / fct)
+        
+        if sdf_penetration:
+            opt_weights_dict['sdf_penetration_weight'] = sdf_penetration_weights
+            for i in range(len(opt_weights_dict['sdf_penetration_weight'])):
+                opt_weights_dict['sdf_penetration_weight'][i] *= (view_num / fct)
 
         keys = opt_weights_dict.keys()
         opt_weights = [dict(zip(keys, vals)) for vals in
@@ -284,6 +323,13 @@ def fit_single_frame(img_list,
                                    pen_distance=pen_distance,
                                    search_tree=search_tree,
                                    tri_filtering_module=filter_faces,
+                                   # SDF
+                                   sdf_penetration=sdf_penetration,
+                                   voxel_size=voxel_size,
+                                   grid_min=grid_min,
+                                   grid_max=grid_max,
+                                   sdf=sdf,
+                                #    sdf_normals=sdf_normals,
                                    # I scale the mesh model to [-0.5, 0.5] during rendering;
                                    # so I need to perform the same scaling
                                    # to make the body shapee plausible

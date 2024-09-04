@@ -277,6 +277,11 @@ def parse_config(argv=None):
                         help='The tolerance threshold for the function')
     parser.add_argument('--maxiters', type=int, default=100,
                         help='The maximum iterations for the optimization')
+    # (dreamhoi) add options for mesh export
+    parser.add_argument('--mesh_betas_fn', type=str, default=None,
+                        help='.npy file storing betas for generating mesh preview')
+    parser.add_argument('--mesh_texture_fn', type=str, default=None,
+                        help='Image file storing texture for generating mesh preview')
 
     args = parser.parse_args()
     args_dict = vars(args)

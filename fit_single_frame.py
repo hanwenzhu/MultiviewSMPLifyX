@@ -61,6 +61,8 @@ def fit_single_frame(img_list,
                      output_folder='',
                      result_fn='out.pkl',
                      mesh_fn='out.obj',
+                     mesh_betas_fn=None,
+                     mesh_texture_fn=None,
                      loss_type='smplify',
                      use_cuda=True,
                      init_joints_idxs=(9, 12, 2, 5),
@@ -466,7 +468,11 @@ def fit_single_frame(img_list,
             pickle.dump(results[min_idx]['result'], result_file, protocol=2)
 
     if save_meshes or visualize:
-        model_output = body_model(return_verts=True, body_pose=torch.from_numpy(result['body_pose'][:, 3:]).cuda())
+        if mesh_betas_fn is not None:
+            betas = np.load(mesh_betas_fn).reshape(1, -1)
+        else:
+            betas = None
+        model_output = body_model(return_verts=True, betas=betas, body_pose=torch.from_numpy(result['body_pose'][:, 3:]).cuda())
         vertices = model_output.vertices.detach().cpu().numpy().squeeze()
 
         # test projection
@@ -497,6 +503,12 @@ def fit_single_frame(img_list,
             img_proj = np.uint8(img_proj*255)
             cv2.imwrite(osp.join(out_img_fd, '%04d.png' % i), img_proj)
 
-        import trimesh
+        import trimesh, trimesh.visual
         out_mesh = trimesh.Trimesh(vertices * body_scale + global_trans, body_model.faces)
+        if mesh_texture_fn is not None:
+            texture_img = pil_img.open(mesh_texture_fn)
+            material = trimesh.visual.material.SimpleMaterial(image=texture_img)
+            uv = np.load('./smplx/models/uv.npy')
+            texture_visuals = trimesh.visual.texture.TextureVisuals(uv=uv, material=material, image=texture_img)
+            out_mesh.visual = texture_visuals
         out_mesh.export(mesh_fn)

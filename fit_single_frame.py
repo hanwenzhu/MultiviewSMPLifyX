@@ -204,7 +204,8 @@ def fit_single_frame(img_list,
     gt_joints_list = list()
     joints_conf_list = list()
 
-    assert(view_num > 0)
+    if view_num == 0:
+        raise ValueError("All OpenPose keypoints are empty")
     for view_id in range(view_num):
         keypoint_data = torch.tensor(keypoints_list[view_id], dtype=dtype)
         gt_joints = keypoint_data[:, :, :2]
@@ -469,7 +470,7 @@ def fit_single_frame(img_list,
 
     if save_meshes or visualize:
         if mesh_betas_fn is not None:
-            betas = np.load(mesh_betas_fn).reshape(1, -1)
+            betas = torch.from_numpy(np.load(mesh_betas_fn).reshape(1, -1)).cuda()
         else:
             betas = None
         model_output = body_model(return_verts=True, betas=betas, body_pose=torch.from_numpy(result['body_pose'][:, 3:]).cuda())

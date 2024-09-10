@@ -4,7 +4,7 @@
 __pycache__/
 .vscode/
 .idea/
-smplx/models/
-vposer/models/snapshots/
+smplx/models/**/*.pkl
+vposer/models/snapshots/*.pt
 dataset_example/
 **/.DS_Store

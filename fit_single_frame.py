@@ -470,7 +470,7 @@ def fit_single_frame(img_list,
 
     if save_meshes or visualize:
         if mesh_betas_fn is not None:
-            betas = torch.from_numpy(np.load(mesh_betas_fn).reshape(1, -1)).cuda()
+            betas = torch.from_numpy(np.load(mesh_betas_fn).reshape(1, -1)).to(dtype=dtype).cuda()
         else:
             betas = None
         model_output = body_model(return_verts=True, betas=betas, body_pose=torch.from_numpy(result['body_pose'][:, 3:]).cuda())
